@@ -1,8 +1,10 @@
 package sless.dsl
 
+import sless.ast.DSL
+
 object LessVariableImplementation {
   type DSL = PropertyDSL with SelectorDSL with ValueDSL with Compilable
-  val dsl: DSL = ???
+  val dsl: DSL = DSL
 
   import LessVariableImplementation.dsl._
 
@@ -12,7 +14,11 @@ object LessVariableImplementation {
     * @param color
     * @return
     */
-  def coloredBg(color: String): dsl.Declaration = ???
+  def coloredBg(color: String): dsl.Declaration = {
+    val bgcolor = prop("background-color")
+    val cColor = value(color)
+    bgcolor := cColor
+  }
 
   /**
     * Create a css sheet that colors an element with the given id in red
@@ -21,7 +27,13 @@ object LessVariableImplementation {
     * @param id
     * @return
     */
-  def colorNamedRed(id: String): dsl.Css = ???
+  def colorNamedRed(id: String): dsl.Css = {
+    css(
+      All.##(id) {
+        coloredBg("red")
+      }
+    )
+  }
 
   /**
     * Create a rule for the given element type that has an aspect ratio of 2/1
@@ -29,6 +41,11 @@ object LessVariableImplementation {
     * @param height
     * @return
     */
-  def doubledWidth(elementType: String, height: Int): dsl.Rule = ???
+  def doubledWidth(elementType: String, height: Int): dsl.Rule = {
+    tipe(elementType).apply(
+        prop("height") := value(height.toString),
+        prop("width") := value((height * 2).toString)
+    )
+  }
 
 }
