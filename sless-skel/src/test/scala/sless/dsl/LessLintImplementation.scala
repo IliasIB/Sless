@@ -10,7 +10,7 @@ import sless.ast.{DSL}
   * */
 
 object LessLintImplementation {
-  type DSL = PropertyDSL with SelectorDSL with ValueDSL with Compilable
+  type DSL = PropertyDSL with NestedSelectorDSL with ValueDSL with Compilable
   val dsl: DSL = DSL
   import sless.ast._
 
@@ -20,11 +20,33 @@ object LessLintImplementation {
     */
   def removeEmptyRules(css : dsl.Css) : (Boolean, dsl.Css) = {
     val tempCss: CssClass = css.asInstanceOf[CssClass]
-    val newRules = tempCss.sRules.filter(rule => (rule.sDeclarations.nonEmpty)).asInstanceOf[Seq[dsl.Rule]]
-    if (newRules.size < tempCss.sRules.size){
+    val tempRules = tempCss.sRules.filter(rule => (rule.sDeclarations.nonEmpty)).asInstanceOf[Seq[dsl.Rule]]
+    val newTuples = tempRules.map(rule => removeEmptyRules(rule.asInstanceOf[RuleClass]))
+    val delWasNeeded = newTuples.exists(tuple => tuple._1)
+    val newRules = newTuples.map(tuple => tuple._2).asInstanceOf[Seq[dsl.Rule]]
+    if (newRules.size < tempCss.sRules.size || delWasNeeded){
       (true, dsl.css(newRules: _*))
     } else {
       (false, css)
+    }
+  }
+  def removeEmptyRules(rule: RuleClass) : (Boolean, RuleClass) = {
+    val rulesAndDeclarations = rule.sDeclarations.partition {
+      case RuleClass(_, _, _) => true
+      case _ => false
+    }
+    val rules = rulesAndDeclarations._1.asInstanceOf[Seq[RuleClass]]
+    val declarations = rulesAndDeclarations._2.asInstanceOf[Seq[DeclarationClass]]
+    if (rules.nonEmpty) {
+      val tempRules = rules.filter(rule => (rule.sDeclarations.nonEmpty)).asInstanceOf[Seq[dsl.Rule]]
+      val newTuples = tempRules.map(rule => removeEmptyRules(rule.asInstanceOf[RuleClass]))
+      val delWasNeeded = newTuples.exists(tuple => tuple._1)
+      val newRule = RuleClass(rule.sSelector, declarations.asInstanceOf[Seq[RuleOrDeclarationClass]]
+        .++(rules.asInstanceOf[Seq[RuleOrDeclarationClass]]), rule.sComment)
+      (delWasNeeded, newRule)
+    }
+    else {
+      (false, rule)
     }
   }
 
@@ -36,43 +58,73 @@ object LessLintImplementation {
     */
   def aggregateMargins(css : dsl.Css) : (Boolean, dsl.Css) = {
     val tempCss: CssClass = css.asInstanceOf[CssClass]
-    def isInRule(rule: RuleClass, string: String): Boolean = {
-      if (rule.sDeclarations.exists(declaration => declaration.sProperty.sProperty == string)) {
-        true
+
+    val cleanedTuples = tempCss.sRules.map(rule => cleanRule(rule))
+    val delWasNeeded = cleanedTuples.exists(tuple => tuple._1)
+    val cleanedRules = cleanedTuples.map(tuple => tuple._2)
+    if (delWasNeeded)
+      (true, dsl.css(cleanedRules.asInstanceOf[Seq[dsl.Rule]]: _*))
+    else
+      (false, css)
+  }
+
+  def isInRule(rule: RuleClass, string: String): Boolean = {
+    val declarations = rule.sDeclarations.filter {
+      case DeclarationClass(_, _, _) => true
+      case _ => false
+    }
+    if (declarations.exists(declaration => declaration.asInstanceOf[DeclarationClass].sProperty.sProperty == string)) {
+      true
+    } else {
+      false
+    }
+  }
+
+  def cleanRule(rule: RuleClass): (Boolean, RuleClass) = {
+    val declarationsAndRules = rule.sDeclarations.partition {
+      case DeclarationClass(_, _, _) => true
+      case _ => false
+    }
+    val declarations = declarationsAndRules._1.asInstanceOf[Seq[DeclarationClass]]
+    val rules = declarationsAndRules._2.asInstanceOf[Seq[RuleClass]]
+
+    if (isInRule(rule, "margin-left") && isInRule(rule, "margin-right") &&
+      isInRule(rule, "margin-top") && isInRule(rule, "margin-bottom")) {
+      val topMargin = declarations.find(declaration =>
+        "margin-top" == declaration.sProperty.sProperty).get.sValue.sValue
+      val leftMargin = declarations.find(declaration =>
+        "margin-left" == declaration.sProperty.sProperty).get.sValue.sValue
+      val rightMargin = declarations.find(declaration =>
+        "margin-right" == declaration.sProperty.sProperty).get.sValue.sValue
+      val bottomMargin = declarations.find(declaration =>
+        "margin-bottom" == declaration.sProperty.sProperty).get.sValue.sValue
+      val newDeclaration = DeclarationClass(new PropertyClass("margin"),
+        new ValueClass(List(topMargin, rightMargin, bottomMargin, leftMargin).mkString(" ")))
+      val tempDeclarations = declarations.filter(declaration =>
+        declaration.sProperty.sProperty match {
+          case "margin-left" | "margin-right" |"margin-top" |"margin-bottom" => false
+          case _ => true
+        }
+      )
+      if (rules.nonEmpty) {
+        val cleanedRules = rules.map(rule => cleanRule(rule)._2)
+        val newDeclarations = tempDeclarations.toList.::(newDeclaration).:+(cleanedRules).asInstanceOf[Seq[RuleOrDeclarationClass]]
+        (true, RuleClass(rule.sSelector, newDeclarations))
       } else {
-        false
+        val newDeclarations = tempDeclarations.toList.::(newDeclaration)
+        (true, RuleClass(rule.sSelector, newDeclarations))
+      }
+    } else {
+      if (rules.nonEmpty) {
+        val cleanedTuples = rules.map(rule => cleanRule(rule))
+        val delWasNeeded = cleanedTuples.exists(tuple => tuple._1)
+        val cleanedRules = cleanedTuples.map(tuple => tuple._2).toList
+        val newDeclarations = declarations.toList.:::(cleanedRules).asInstanceOf[Seq[RuleOrDeclarationClass]]
+        (delWasNeeded, RuleClass(rule.sSelector, newDeclarations))
+      } else {
+        (false, rule)
       }
     }
-
-    val delNeeded = tempCss.sRules.exists((rule) => (
-      isInRule(rule, "margin-left") && isInRule(rule, "margin-right") &&
-        isInRule(rule, "margin-top") && isInRule(rule, "margin-bottom")))
-
-    val cleanedRules = tempCss.sRules.map((rule) => (
-        if (delNeeded) {
-          val topMargin = rule.sDeclarations.find(declaration =>
-            "margin-top" == declaration.sProperty.sProperty).get.sValue.sValue
-          val leftMargin = rule.sDeclarations.find(declaration =>
-            "margin-left" == declaration.sProperty.sProperty).get.sValue.sValue
-          val rightMargin = rule.sDeclarations.find(declaration =>
-            "margin-right" == declaration.sProperty.sProperty).get.sValue.sValue
-          val bottomMargin = rule.sDeclarations.find(declaration =>
-            "margin-bottom" == declaration.sProperty.sProperty).get.sValue.sValue
-          val newDeclaration = new DeclarationClass(new PropertyClass("margin"),
-            new ValueClass(List(topMargin, rightMargin, bottomMargin, leftMargin).mkString(" ")))
-          val tempDeclarations = rule.sDeclarations.filter(declaration =>
-            declaration.sProperty.sProperty match {
-              case "margin-left" | "margin-right" |"margin-top" |"margin-bottom" => false
-              case _ => true
-            }
-          )
-          val newDeclarations = tempDeclarations.toList.::(newDeclaration)
-          new RuleClass(rule.sSelector, newDeclarations)
-        } else {
-          rule
-        }
-      ))
-    (delNeeded, dsl.css(cleanedRules.asInstanceOf[Seq[dsl.Rule]]: _*))
   }
 
   /**
@@ -81,13 +133,22 @@ object LessLintImplementation {
     */
   def limitFloats(css : dsl.Css, n : Integer) : Boolean  = {
     val tempCss: CssClass = css.asInstanceOf[CssClass]
-    val floatsFound = tempCss.sRules.count((rule) => (
-      rule.sDeclarations.exists((declaration) => (declaration.sProperty.sProperty == "float"))))
+    val floatsFound = tempCss.sRules.map(rule => countFloats(rule)).sum
     if (floatsFound > n){
       true
     } else {
       false
     }
+  }
+  def countFloats(rule: RuleClass): Int = {
+    val declarationsAndRules = rule.sDeclarations.partition {
+      case DeclarationClass(_, _, _) => true
+      case _ => false
+    }
+    val floatsFound = declarationsAndRules._1.count(declaration =>
+      declaration.asInstanceOf[DeclarationClass].sProperty.sProperty == "float")
+    val floatsInNested = declarationsAndRules._2.map(rule => countFloats(rule.asInstanceOf[RuleClass])).sum
+    floatsFound + floatsInNested
   }
 
 }

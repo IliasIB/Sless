@@ -34,4 +34,20 @@ div#container {
     background-color: blue; /* bg is blue */
 }""")
   }
+
+  test("Pretty print nested with comments") {
+    val ex = css(
+      (All ## "header").nest(
+        (Parent |+ Parent).nest(
+          (Parent |- Parent)(prop("width") := value("300px"))
+        )
+      ).comment("Nested")
+    )
+    assert(
+      pretty(ex, 4) ===
+        """/* Nested */
+*#header *#header + *#header *#header *#header + *#header {
+    width: 300px;
+}""")
+  }
 }

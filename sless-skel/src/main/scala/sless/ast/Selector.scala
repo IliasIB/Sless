@@ -1,6 +1,6 @@
 package sless.ast
 
-import sless.dsl.{MixinDSL, SelectorDSL}
+import sless.dsl.{MixinDSL, NestedSelectorDSL, SelectorDSL}
 
 class SelectorClass
 case class ClassName(s: SelectorClass, string: String) extends SelectorClass
@@ -15,8 +15,9 @@ case class Descendant(s: SelectorClass, selector: SelectorClass) extends Selecto
 case class Group(selectors: Seq[SelectorClass]) extends SelectorClass
 case class Tipe(string: String) extends SelectorClass
 case class All() extends SelectorClass
+case class Parent() extends SelectorClass
 
-trait SelectorTrait extends MixinDSL {
+trait SelectorTrait extends MixinDSL with NestedSelectorDSL {
   this: DSL.type =>
 
   // modifiers
@@ -70,10 +71,16 @@ trait SelectorTrait extends MixinDSL {
     Tipe(string)
   }
 
+  val All: Selector = new All()
+
+  val Parent: Selector = new Parent()
+
   // bind to declarations
   def bindTo(s: Selector, declarations: Seq[Declaration]): Rule = {
     new RuleClass(s, declarations)
   }
 
-  val All: Selector = new All()
+  def bindWithNesting(s: Selector, rules: Seq[RuleOrDeclaration]): Rule = {
+    new RuleClass(s, rules)
+  }
 }

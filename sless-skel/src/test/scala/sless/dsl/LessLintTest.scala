@@ -42,6 +42,28 @@ class LessLintTest extends FunSuite{
         """div#container{margin:25px 50px 75px 100px;width:100%;}""")
   }
 
+  test("Nested aggregate margins") {
+    val container = tipe("div")
+    val parentS = Parent ## "container"
+    val inner = parentS (
+      prop("margin-right")  := value("50px"),
+      prop("margin-bottom")  := value("75px"),
+      prop("width") := value("100%"),
+      prop("margin-top")  := value("25px"),
+      prop("margin-left")  := value("100px")
+    )
+
+    val ex = css(
+      container.nest(inner)
+    )
+
+    val (lintedBool, lintedEx) = LessLintImplementation.aggregateMargins(ex)
+    assert(lintedBool === true)
+    assert(
+      LessLintImplementation.dsl.compile(lintedEx) ===
+        """div#container{margin:25px 50px 75px 100px;width:100%;}""")
+  }
+
   test("Limit Floats") {
     val container = tipe("div") ## "container"
     val fldecl = prop("float") := value("left")
