@@ -15,7 +15,7 @@ class LessLintTest extends FunSuite{
       },
     )
 
-   val (lintedBool, lintedEx) = LessLintImplementation.removeEmptyRules(ex)
+   val (lintedBool, lintedEx) = removeEmptyRules(ex)
     assert(lintedBool === true)
     assert(
       LessLintImplementation.dsl.compile(lintedEx) ===
@@ -35,29 +35,7 @@ class LessLintTest extends FunSuite{
       )
     )
 
-    val (lintedBool, lintedEx) = LessLintImplementation.aggregateMargins(ex)
-    assert(lintedBool === true)
-    assert(
-      LessLintImplementation.dsl.compile(lintedEx) ===
-        """div#container{margin:25px 50px 75px 100px;width:100%;}""")
-  }
-
-  test("Nested aggregate margins") {
-    val container = tipe("div")
-    val parentS = Parent ## "container"
-    val inner = parentS (
-      prop("margin-right")  := value("50px"),
-      prop("margin-bottom")  := value("75px"),
-      prop("width") := value("100%"),
-      prop("margin-top")  := value("25px"),
-      prop("margin-left")  := value("100px")
-    )
-
-    val ex = css(
-      container.nest(inner)
-    )
-
-    val (lintedBool, lintedEx) = LessLintImplementation.aggregateMargins(ex)
+    val (lintedBool, lintedEx) = aggregateMargins(ex)
     assert(lintedBool === true)
     assert(
       LessLintImplementation.dsl.compile(lintedEx) ===
@@ -74,10 +52,10 @@ class LessLintTest extends FunSuite{
     )
     val ex2 = css(container(fldecl))
 
-    val lintedBool1 = LessLintImplementation.limitFloats(ex1,1)
+    val lintedBool1 = limitFloats(ex1,1)
     assert(lintedBool1 === true)
 
-    val lintedBool2 = LessLintImplementation.limitFloats(ex2,1)
+    val lintedBool2 = limitFloats(ex2,1)
     assert(lintedBool2 === false)
   }
 }

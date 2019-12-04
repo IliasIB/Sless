@@ -21,7 +21,7 @@ class MergeTest extends  FunSuite{
       }
     )
 
-    val ex = MergeImplementation.mergeSheets(ex1,ex2)
+    val ex = mergeSheets(ex1,ex2)
 
     assert(
       MergeImplementation.dsl.compile(ex) ===
@@ -44,7 +44,7 @@ class MergeTest extends  FunSuite{
       )
     )
 
-    val ex = MergeImplementation.mergeSheets(ex1,ex2)
+    val ex = mergeSheets(ex1,ex2)
 
 
     assert(

@@ -4,8 +4,6 @@ import org.scalatest.FunSuite
 
 class MixinTest extends FunSuite {
   import MixinImplementation.dsl._
-  import MixinImplementation.{simpleColorMixin, nestedMixin, doubledWidthMixin}
-
 
   test("Simple mixin") {
     val asgn = prop("property-1") := value("value-1")
@@ -31,16 +29,5 @@ class MixinTest extends FunSuite {
     assert(
       MixinImplementation.dsl.compile(ex) ===
         """*{property-pre:value-pre;Hey-Im-a-mixin:value-1;property-post:value-post;}""")
-  }
-
-  test("Nested, double width, color mixin") {
-    val propertiesPre = List(prop("property-pre") := value("value-pre"))
-    val rule = All.mixin(propertiesPre, nestedMixin(simpleColorMixin, "50"), doubledWidthMixin(5))
-    val ex = css(rule)
-
-    assert(
-      MixinImplementation.dsl.compile(ex) ===
-      """*{property-pre:value-pre;color:red;background:white;margin:50;height:5;width:10;}"""
-    )
   }
 }

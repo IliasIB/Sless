@@ -25,7 +25,7 @@ class ExtendTest extends FunSuite{
 
   test("List extension") {
     val ex = css(
-      N(All.c("class-name1"),All.c("class-name1")).extend(All ## "id-name1") {
+      N(All.c("class-name1"),All.c("class-name2")).extend(All ## "id-name1") {
         prop("width") := value("100%")
       },
       (All ## "id-name1") {
