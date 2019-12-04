@@ -1,7 +1,6 @@
 package sless.dsl
 
-import sless.ast.{CompilableHandler, CssAST, DeclarationAST, LintHandler, PropertyAST,
-  PropertyHandler, RuleAST, SelectorAST, SelectorHandler, ValueAST, ValueHandler}
+import sless.ast._
 
 object LessLintImplementation {
   type DSL = PropertyDSL with SelectorDSL with ValueDSL with LintDSL with Compilable
@@ -10,7 +9,7 @@ object LessLintImplementation {
     override type Selector = SelectorAST
     override type Property = PropertyAST
     override type Css = CssAST
-    override type Declaration = DeclarationAST
-    override type Rule = RuleAST
+    override type Declaration = BaseDeclarationAST
+    override type Rule = BaseRuleAST
   }
 }

@@ -6,8 +6,8 @@ import sless.dsl.SelectorDSL
 trait SelectorHandler extends SelectorDSL {
   type Selector = SelectorAST
   type Value = ValueAST
-  type Rule = RuleAST
-  type Declaration = DeclarationAST
+  type Rule = BaseRuleAST
+  type Declaration = BaseDeclarationAST
 
   // modifiers
   def className(s: Selector, string: String): Selector = {
@@ -64,6 +64,6 @@ trait SelectorHandler extends SelectorDSL {
 
   // bind to declarations
   def bindTo(s: Selector, declarations: Seq[Declaration]): Rule = {
-    new Rule(s, declarations)
+    RuleAST(s, declarations)
   }
 }

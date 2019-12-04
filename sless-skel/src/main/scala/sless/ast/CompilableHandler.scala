@@ -4,9 +4,9 @@ import sless.dsl.{BaseDSL, Compilable}
 
 class CompilableHandler extends BaseDSL with Compilable{
   type Css = CssAST
-  type Rule = RuleAST
+  type Rule = BaseRuleAST
   type Selector = SelectorAST
-  type Declaration = DeclarationAST
+  type Declaration = BaseDeclarationAST
 
   def fromRules(rules: Seq[Rule]): Css = {
     new Css(rules)
@@ -16,10 +16,10 @@ class CompilableHandler extends BaseDSL with Compilable{
     sheet.rules.map(rule => compile(rule)).mkString("")
   }
 
-  def compile(rule: RuleAST): String = {
-    compile(rule.selector) + "{" +
+  def compile(rule: Rule): String = {
+    ruleComment(rule) + compile(rule.selector) + "{" +
       rule.declarations.map(declaration =>
-        compile(declaration)).mkString("") + "}"
+        compile(declaration.asInstanceOf[BaseDeclarationAST])).mkString("") + "}"
   }
 
   def compile(selector: Selector): String = {
@@ -40,7 +40,7 @@ class CompilableHandler extends BaseDSL with Compilable{
   }
 
   def compile(declaration: Declaration): String = {
-    declaration.property.property + ":" + declaration.value.value + ";"
+    declaration.property.property + ":" + declaration.value.value + ";" + declarationComment(declaration)
   }
 
   def pretty(sheet: Css, spaces: Int): String = {
@@ -65,12 +65,26 @@ class CompilableHandler extends BaseDSL with Compilable{
   }
 
   def pretty(declaration: Declaration, spaces: Int): String = {
-    (" " * spaces) + declaration.property.property + ": " + declaration.value.value + ";"
+    (" " * spaces) + declaration.property.property + ": " + declaration.value.value + ";" +
+      declarationComment(declaration, pretty = true)
   }
 
   def pretty(rule: Rule, spaces: Int): String = {
-    pretty(rule.selector) + " {\n" +
+    ruleComment(rule, pretty = true) + pretty(rule.selector) + " {\n" +
       rule.declarations.map(declaration =>
-        pretty(declaration, spaces)).mkString("\n") + "\n}"
+        pretty(declaration.asInstanceOf[BaseDeclarationAST], spaces)).mkString("\n") + "\n}"
+  }
+
+  protected def declarationComment(declaration: Declaration, pretty: Boolean=false): String = {
+    declaration match {
+      case DeclarationAST(_, _) => ""
+      case DeclarationCommentAST(_, _, comment) =>  (if(pretty) " " else "") + "/* " + comment.comment + " */"
+    }
+  }
+  protected def ruleComment(rule: Rule, pretty: Boolean=false): String = {
+    rule match {
+      case RuleAST(_, _) => ""
+      case RuleCommentAST(_, _, comment) => "/* " + comment.comment + " */" + (if(pretty) "\n" else "")
+    }
   }
 }

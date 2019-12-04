@@ -15,29 +15,28 @@ trait LintHandler extends LintDSL {
   }
 
   def aggregateMargins(css : Css) : (Boolean, Css) = {
-    val marginRules = css.rules.groupBy(rule =>
-      rule.declarations.exists(declaration => declaration.property.property == "margin-left") &&
-      rule.declarations.exists(declaration => declaration.property.property == "margin-right") &&
-      rule.declarations.exists(declaration => declaration.property.property == "margin-top") &&
-      rule.declarations.exists(declaration => declaration.property.property == "margin-bottom")
+    val marginRules = css.rules.partition(rule =>
+      rule.declarations.exists(declaration => declaration.asInstanceOf[BaseDeclarationAST].property.property == "margin-left") &&
+      rule.declarations.exists(declaration => declaration.asInstanceOf[BaseDeclarationAST].property.property == "margin-right") &&
+      rule.declarations.exists(declaration => declaration.asInstanceOf[BaseDeclarationAST].property.property == "margin-top") &&
+      rule.declarations.exists(declaration => declaration.asInstanceOf[BaseDeclarationAST].property.property == "margin-bottom")
     )
 
-    val cleanedRules = marginRules(true).map(rule =>
+    val cleanedRules = marginRules._1.map(rule =>
       RuleAST(rule.selector, rule.declarations.filter(declaration =>
-        !(declaration.property.property == "margin-left" ||
-        declaration.property.property == "margin-right" ||
-        declaration.property.property == "margin-top" ||
-        declaration.property.property == "margin-bottom")
+        !(declaration.asInstanceOf[BaseDeclarationAST].property.property == "margin-left" ||
+        declaration.asInstanceOf[BaseDeclarationAST].property.property == "margin-right" ||
+        declaration.asInstanceOf[BaseDeclarationAST].property.property == "margin-top" ||
+        declaration.asInstanceOf[BaseDeclarationAST].property.property == "margin-bottom")
       ).toList.::(DeclarationAST(PropertyAST("margin"), ValueAST(
-        rule.declarations.find(declaration => declaration.value.value == "margin-left") + " " +
-        rule.declarations.find(declaration => declaration.value.value == "margin-right") + " " +
-        rule.declarations.find(declaration => declaration.value.value == "margin-top") + " " +
-        rule.declarations.find(declaration => declaration.value.value == "margin-bottom")
+        rule.declarations.find(declaration => declaration.asInstanceOf[BaseDeclarationAST].property.property == "margin-top").get.asInstanceOf[BaseDeclarationAST].value.value + " " +
+        rule.declarations.find(declaration => declaration.asInstanceOf[BaseDeclarationAST].property.property == "margin-right").get.asInstanceOf[BaseDeclarationAST].value.value + " " +
+        rule.declarations.find(declaration => declaration.asInstanceOf[BaseDeclarationAST].property.property == "margin-bottom").get.asInstanceOf[BaseDeclarationAST].value.value + " " +
+        rule.declarations.find(declaration => declaration.asInstanceOf[BaseDeclarationAST].property.property == "margin-left").get.asInstanceOf[BaseDeclarationAST].value.value
       )))))
+    val newRules = marginRules._2 ++ cleanedRules
 
-    val newRules = marginRules(false) ++ cleanedRules
-
-    if (marginRules.nonEmpty){
+    if (marginRules._1.nonEmpty){
       (true, (new CompilableHandler).css(newRules: _*))
     } else {
       (false, css)
@@ -45,6 +44,6 @@ trait LintHandler extends LintDSL {
   }
 
   def limitFloats(css : Css, n : Integer) : Boolean = {
-    css.rules.count(rule => rule.declarations.exists(declaration => declaration.property.property == "float")) > n
+    css.rules.count(rule => rule.declarations.exists(declaration => declaration.asInstanceOf[BaseDeclarationAST].property.property == "float")) > n
   }
 }
