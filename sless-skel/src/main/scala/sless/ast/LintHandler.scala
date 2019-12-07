@@ -24,10 +24,10 @@ trait LintHandler extends LintDSL {
 
     val cleanedRules = marginRules._1.map(rule =>
       RuleAST(rule.selector, rule.declarations.filter(declaration =>
-        !(declaration.asInstanceOf[BaseDeclarationAST].property.property == "margin-left" ||
-        declaration.asInstanceOf[BaseDeclarationAST].property.property == "margin-right" ||
-        declaration.asInstanceOf[BaseDeclarationAST].property.property == "margin-top" ||
-        declaration.asInstanceOf[BaseDeclarationAST].property.property == "margin-bottom")
+        declaration.asInstanceOf[BaseDeclarationAST].property.property match {
+          case "margin-left" | "margin-right" |"margin-top" |"margin-bottom" => false
+          case _ => true
+        }
       ).toList.::(DeclarationAST(PropertyAST("margin"), ValueAST(
         rule.declarations.find(declaration => declaration.asInstanceOf[BaseDeclarationAST].property.property == "margin-top").get.asInstanceOf[BaseDeclarationAST].value.value + " " +
         rule.declarations.find(declaration => declaration.asInstanceOf[BaseDeclarationAST].property.property == "margin-right").get.asInstanceOf[BaseDeclarationAST].value.value + " " +

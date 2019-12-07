@@ -10,7 +10,7 @@ class NestedCompilableHandler extends CompilableHandler {
     }
   }
 
-  def compile(rule: Rule, accumulated: Selector = null): String = {
+  def compile(rule: Rule, accumulated: Selector): String = {
     val declarationsAndRules = rule.declarations.partition {
       case _: BaseDeclarationAST => true
       case _: BaseRuleAST => false
@@ -46,7 +46,7 @@ class NestedCompilableHandler extends CompilableHandler {
     selector match {
       case TipeAST(string) => string
       case IdAST(s, string) => compile(s, accumulated) + "#" + string
-      case GroupAST(selectors) => selectors.map((selector) => (compile(selector, accumulated))).mkString(",")
+      case GroupAST(selectors) => selectors.map(selector => compile(selector, accumulated)).mkString(",")
       case ChildAST(s, selector) => compile(s, accumulated) + ">" + compile(selector, accumulated)
       case GeneralAST(s, selector) => compile(s, accumulated) + "~" + compile(selector, accumulated)
       case AdjacentAST(s, selector) => compile(s, accumulated) + "+" + compile(selector, accumulated)
@@ -111,6 +111,65 @@ class NestedCompilableHandler extends CompilableHandler {
       case ClassNameAST(s, _) => containsParent(s)
       case AllAST() => false
       case ParentAST() => true
+    }
+  }
+
+  override def pretty(sheet: Css, spaces: Int): String = {
+    sheet.rules.map(rule => pretty(rule, spaces, null)).mkString("\n\n")
+  }
+
+  def pretty(selector: Selector, accumulated: Selector): String = {
+    selector match {
+      case TipeAST(string) => string
+      case IdAST(s, string) => pretty(s, accumulated) + "#" + string
+      case GroupAST(selectors) => selectors.map(selector => pretty(selector, accumulated)).mkString(", ")
+      case ChildAST(s, selector) => pretty(s, accumulated) + " > " + pretty(selector, accumulated)
+      case GeneralAST(s, selector) => pretty(s, accumulated) + " ~ " + pretty(selector, accumulated)
+      case AdjacentAST(s, selector) => pretty(s, accumulated) + " + " + pretty(selector, accumulated)
+      case PseudoClassAST(s, string) => pretty(s, accumulated) + ":" + string
+      case DescendantAST(s, selector) => pretty(s, accumulated) + " " + pretty(selector, accumulated)
+      case PseudoElementAST(s, string) => pretty(s, accumulated) + "::" + string
+      case AttributeAST(s, attr, string) => pretty(s, accumulated) + "[" + attr + "=\"" + string + "\"]"
+      case ClassNameAST(s, string) => pretty(s, accumulated) + "." + string
+      case AllAST() => "*"
+      case ParentAST() =>
+        if (accumulated != null) {
+          pretty(accumulated, null)
+        }else {
+          throw ParentException()
+        }
+    }
+  }
+
+  def pretty(rule: Rule, spaces: Int, accumulated: Selector = null): String = {
+    val declarationsAndRules = rule.declarations.partition {
+      case _: BaseDeclarationAST => true
+      case _: BaseRuleAST => false
+    }
+    val declarations = declarationsAndRules._1.asInstanceOf[Seq[BaseDeclarationAST]]
+    val rules = declarationsAndRules._2.asInstanceOf[Seq[BaseRuleAST]]
+    val ruleString = {
+      if ((declarations.isEmpty && rules.isEmpty) || declarations.nonEmpty) {
+        (if (!containsParent(rule.selector))
+          pretty(noNullDescendant(accumulated, rule.selector))
+        else
+          pretty(rule.selector, accumulated)) + " {\n" +
+          declarations.map(declaration =>
+            pretty(declaration, spaces)).mkString("\n") + "\n}"
+      } else {
+        ""
+      }
+    }
+
+    if (rules.isEmpty){
+      ruleComment(rule, pretty = true) + ruleString
+    } else {
+      ruleComment(rule, pretty = true) + ruleString + rules.map(rule2 =>
+        pretty(rule2, spaces,
+          if (!containsParent(rule.selector))
+            noNullDescendant(accumulated, rule.selector)
+          else
+            rectifyParent(rule.selector, accumulated))).mkString("\n\n")
     }
   }
 }
